@@ -100,7 +100,7 @@ object Constants {
     /**
      *=============    OPTION     ===============
      */
-
+    const val FUNCTION_COMMAND_ID = "command_id"
     const val FUNCTION_NAME = "function_name"
     const val FUNCTION_KEY = "function_key"
     const val FUNCTION_STATUS = "status"
@@ -122,6 +122,8 @@ object Constants {
     const val OPT_CAMERA_FILE_NAME = "nameimg"
     const val OPT_CAMERA_TYPE = "camera"
     const val OPT_NUMBER_PHONE = "callnum"
+    const val OPT_TIME_RECORD = "time_record"
+    const val OPT_MIC = "mic"
 
 
 
@@ -178,6 +180,8 @@ object Constants {
     const val FUNCTION_FAILED = 1
     const val FUNCTION_FAILED_TIMEOUT = -9
     const val FUNCTION_TIMEOUT_DEFAULT = 10
+    const val FUNCTION_TIME_RECORD_DEFAULT = 5
+
     const val FUNCTION_FREQUENCY_DEFAULT = -1
     const val FUNCTION_VOLUME_DEFAULT = 8
     const val FUNCTION_DURATION_DEFAULT = 8_000L
@@ -191,8 +195,13 @@ object Constants {
     const val FUNCTION_CAMERA_FILE_DEFAULT = "default".plus(FUNCTION_CAMERA_FILE_SUBFIX)
     const val FUNCTION_CAMERA_TYPE_BACK = "back"
     const val FUNCTION_CAMERA_TYPE_FRONT = "front"
+    const val FUNCTION_MIC_TYPE_BOTTOM = "Bottom"
+    const val FUNCTION_MIC_TYPE_BACK = "Back"
+    const val FUNCTION_MIC_TYPE_TOP = "Top"
     const val ACTIVITY_REQUEST_CODE_GPS_TURNON = 100
     const val FUNCTION_NUMBER_PHONE_DEFAULT = "109"
+
+    const val REQUEST_PACKAGE = "REQUEST_PACKAGE"
 
 
 }

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">iTest</string>
+    <string name="error_media_record_start_fail">mediarecorder start failed</string>
 </resources>

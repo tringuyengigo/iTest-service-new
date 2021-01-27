@@ -10,6 +10,8 @@ import com.google.gson.annotations.SerializedName
 import timber.log.Timber
 
 data class Request(
+        @SerializedName(Constants.FUNCTION_COMMAND_ID)
+        val commandID: String,
         @SerializedName(Constants.FUNCTION_NAME)
         val name: String,
         @SerializedName(Constants.FUNCTION_KEY)
@@ -60,6 +62,9 @@ data class Request(
     fun getTimeOut() = getOpt(Constants.OPT_TIME_OUT)?.asInt
             ?: Constants.FUNCTION_TIMEOUT_DEFAULT
 
+    fun getTimeToRecord() = getOpt(Constants.OPT_TIME_RECORD)?.asInt
+        ?: Constants.FUNCTION_TIME_RECORD_DEFAULT
+
     fun getFrequency() = getOpt(Constants.OPT_REQUENCY)?.asInt
             ?: Constants.FUNCTION_TIMEOUT_DEFAULT
 
@@ -68,6 +73,9 @@ data class Request(
 
     fun getColor()  = getOpt(Constants.OPT_COLOR)?.asString
             ?: Constants.FUNCTION_COLOR_DEFAULT
+
+    fun getMic()  = getOpt(Constants.OPT_MIC)?.asString
+        ?: Constants.FUNCTION_COLOR_DEFAULT
 
     fun getRadius()  = getOpt(Constants.OPT_RADIUS)?.asInt
             ?: Constants.FUNCTION_RADIUS_DEFAULT

@@ -50,4 +50,6 @@ dependencies {
 
     implementation 'com.google.code.gson:gson:2.8.6'
 
+    implementation "androidx.lifecycle:lifecycle-service:2.2.0"
+
 }
