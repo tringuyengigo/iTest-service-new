@@ -17,6 +17,7 @@ import android.os.IBinder
 import android.util.Size
 import android.view.*
 import androidx.annotation.RequiresApi
+import com.gds.itest.R
 import com.gds.itest.interactor.FuncResultCallback
 import com.gds.itest.model.Request
 import com.gds.itest.utils.Constants
@@ -47,8 +48,6 @@ class CameraService : Service(), SurfaceHolder.Callback {
 
     override fun onCreate() {
         super.onCreate()
-        Timber.tag(TAG).e("onCreate()")
-        // Create new SurfaceView, set its size to 1x1, move it to the top left corner and set this service as a callback
         windowManager = this.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         surfaceView = SurfaceView(this)
         val layoutParams: WindowManager.LayoutParams = WindowManager.LayoutParams(
@@ -60,11 +59,10 @@ class CameraService : Service(), SurfaceHolder.Callback {
         layoutParams.gravity = Gravity.LEFT or Gravity.TOP
         windowManager!!.addView(surfaceView, layoutParams)
         surfaceView!!.holder.addCallback(this)
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             val notification: Notification = Notification.Builder(this)
                 .setContentTitle(request?.name)
-                .setContentText("")
+                .setSmallIcon(R.mipmap.itest_logo)
                 .build()
             startForeground(1234, notification)
         }
@@ -79,7 +77,6 @@ class CameraService : Service(), SurfaceHolder.Callback {
     }
 
     override fun onBind(intent: Intent): IBinder {
-        Timber.tag(TAG).e("onBind()")
         return binder
     }
 
@@ -100,22 +97,27 @@ class CameraService : Service(), SurfaceHolder.Callback {
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun surfaceCreated(p0: SurfaceHolder) {
-        initCam(width = 600*2, height = 800*2)
+        initCamera()
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun initCam(width: Int, height: Int) {
+    private fun initCamera() {
+        Timber.tag(TAG).e("initCamera() request?.getCameraType(): ${request?.getCameraType()}")
+        var camId: String? = CameraCharacteristics.LENS_FACING_BACK.toString()
         cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        var camId: String? = null
-        for (id in cameraManager!!.cameraIdList) {
-            val characteristics = cameraManager!!.getCameraCharacteristics(id)
-            val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
-            if (facing == CameraCharacteristics.LENS_FACING_BACK) {
-                camId = id
-                break
+
+        when(request?.getCameraType()){
+            Constants.FUNCTION_CAMERA_TYPE_BACK -> { camId = CameraCharacteristics.LENS_FACING_BACK.toString() }
+            Constants.FUNCTION_CAMERA_TYPE_FRONT -> { camId = CameraCharacteristics.LENS_FACING_FRONT.toString() }
+            Constants.FUNCTION_CAMERA_TYPE_IR -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    camId = CameraCharacteristics.LENS_FACING_EXTERNAL.toString()
+                }
             }
+            else -> { Timber.tag(TAG).e("Default this app will use the back camera") }
         }
-        previewSize = chooseSupportedSize(camId!!, width, height)
+
+        previewSize = chooseSupportedSize(camId!!, textureViewWidth = 1200, textureViewHeight = 1600)
         cameraManager!!.openCamera(camId, stateCallback, null)
     }
 
@@ -166,25 +168,32 @@ class CameraService : Service(), SurfaceHolder.Callback {
             session: CameraCaptureSession,
             request: CaptureRequest,
             result: TotalCaptureResult
-        ) { Timber.tag(TAG).e("onCaptureCompleted") }
+        ) {
+            Timber.tag(TAG).e("onCaptureCompleted")
+            makeResult(Pair(first = true, second = null))
+        }
     }
 
     private val stateCallback = @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     object : CameraDevice.StateCallback() {
 
         override fun onOpened(currentCameraDevice: CameraDevice) {
+            Timber.tag(TAG).e("onOpened")
             cameraDevice = currentCameraDevice
             createCaptureSession()
         }
 
         override fun onDisconnected(currentCameraDevice: CameraDevice) {
+            Timber.tag(TAG).e("onDisconnected")
             currentCameraDevice.close()
             cameraDevice = null
         }
 
         override fun onError(currentCameraDevice: CameraDevice, error: Int) {
+            Timber.tag(TAG).e("onError $error")
             currentCameraDevice.close()
             cameraDevice = null
+            makeResult(Pair(first = false, second = "onError $error"))
         }
     }
 
@@ -233,7 +242,6 @@ class CameraService : Service(), SurfaceHolder.Callback {
                                         captureCallback,
                                         null
                                 )
-
                             } catch (e: Exception) {
                                 Timber.tag(TAG).e("createCaptureSession Exception: $e")
                             }
@@ -312,13 +320,18 @@ class CameraService : Service(), SurfaceHolder.Callback {
 
             imageReader?.close()
             imageReader = null
-            try {
-                mFuncResultCallback?.onResultEmit(Pair(first = true, second = null))
-            } catch (ex: Exception) {
-                Timber.tag(TAG).e("stopMediaRecorder $ex")
-            }
+
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    private fun makeResult(result: Pair<Boolean, Any?>) {
+        try {
+            mFuncResultCallback?.onResultEmit(result)
+            stopForeground(true)
+        } catch (ex: Exception) {
+            Timber.tag(TAG).e("stopMediaRecorder $ex")
         }
     }
 

@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">iTest</string>
     <string name="error_media_record_start_fail">mediarecorder start failed</string>
+    <string name="error_cannot_get_back_camera_id">Cannot get back camera ID</string>
+    <string name="error_cannot_get_front_camera_id">Cannot get front camera ID</string>
+
 </resources>

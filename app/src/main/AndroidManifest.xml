@@ -73,23 +73,26 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <service
+            android:name=".service.function.video.VideoRecordServiceV2"
+            android:enabled="true"
+            android:exported="true"></service>
+        <service
             android:name=".service.main.MainService"
             android:enabled="true"
             android:exported="true" />
         <service
             android:name=".service.function.camera.CameraService"
             android:enabled="true"
-            android:exported="true">
-        </service>
+            android:exported="true"></service>
         <service
             android:name=".service.function.video.VideoRecordServiceV1"
             android:enabled="true"
-            android:exported="true">
-        </service>
+            android:exported="true"></service>
 
         <activity android:name=".view.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

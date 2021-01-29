@@ -68,39 +68,9 @@ class VideoRecordServiceV1 : Service(), SurfaceHolder.Callback {
     override fun surfaceCreated(surfaceHolder: SurfaceHolder) {
         Timber.tag(TAG).e("surfaceCreated")
         when (request?.key) {
-            Constants.TAG_KEYVIDEORECORD -> startMediaRecorder(cameraFacing = Camera.CameraInfo.CAMERA_FACING_BACK, surfaceHolder = surfaceHolder)
-            Constants.TAG_KEYVIDEORECORDFRONT -> startMediaRecorder(cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT, surfaceHolder = surfaceHolder)
-            else -> {
-                Timber.tag(TAG).e("Function not support!!! $request")
-            }
-        }
-        when (request?.key) {
-            Constants.TAG_KEYVIDEORECORD -> {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
-                    val notification: Notification = Notification.Builder(this)
-                        .setContentTitle(request?.name)
-                        .setContentText("")
-                        .setSmallIcon(R.drawable.f_back_video)
-                        .build()
-                    startForeground(1234, notification)
-                }
-                startMediaRecorder(cameraFacing = Camera.CameraInfo.CAMERA_FACING_BACK, surfaceHolder = surfaceHolder)
-            }
-            Constants.TAG_KEYVIDEORECORDFRONT -> {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
-                    val notification: Notification = Notification.Builder(this)
-                        .setContentTitle(request?.name)
-                        .setContentText("")
-                        .setSmallIcon(R.drawable.f_front_video)
-                        .build()
-                    startForeground(1234, notification)
-
-                }
-                startMediaRecorder(cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT, surfaceHolder = surfaceHolder)
-            }
-            else -> {
-                Timber.tag(TAG).e("Function not support!!! $request")
-            }
+            Constants.TAG_KEYVIDEORECORD -> { startMediaRecorder(cameraFacing = Camera.CameraInfo.CAMERA_FACING_BACK, surfaceHolder = surfaceHolder) }
+            Constants.TAG_KEYVIDEORECORDFRONT -> { startMediaRecorder(cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT, surfaceHolder = surfaceHolder) }
+            else -> { Timber.tag(TAG).e("Function not support!!! $request") }
         }
     }
 
@@ -172,6 +142,16 @@ class VideoRecordServiceV1 : Service(), SurfaceHolder.Callback {
         layoutParams.gravity = Gravity.LEFT or Gravity.TOP
         windowManager!!.addView(surfaceView, layoutParams)
         surfaceView!!.holder.addCallback(this)
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+            val notification: Notification = Notification.Builder(this)
+                .setContentTitle(request?.name)
+                .setContentText("")
+                .setSmallIcon(R.mipmap.itest_logo)
+                .build()
+            startForeground(1234, notification)
+
+        }
     }
 
 

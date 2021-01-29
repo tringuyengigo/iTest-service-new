@@ -114,8 +114,8 @@ data class Request(
             Constants.TAG_KEYCHARGE -> R.drawable.f_charge
             Constants.TAG_KEYPROXIMITYSENSOR -> R.drawable.f_proximity
             Constants.TAG_KEYLIGHTSENSOR -> R.drawable.f_light
-            Constants.TAG_KEYCAMFRONT,
-            Constants.TAG_KEYCAMERA,
+            Constants.TAG_KEYCAMFRONT -> R.drawable.f_camera
+            Constants.TAG_KEYCAMERA -> R.drawable.f_camera
             Constants.TAG_KEYBARCODE -> R.drawable.f_camera
             Constants.TAG_KEYVIDEORECORD -> R.drawable.f_back_video
             Constants.TAG_KEYVIDEORECORDFRONT -> R.drawable.f_front_video

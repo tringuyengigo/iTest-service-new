@@ -124,6 +124,7 @@ object Constants {
     const val OPT_NUMBER_PHONE = "callnum"
     const val OPT_TIME_RECORD = "time_record"
     const val OPT_MIC = "mic"
+    const val OPT_ID_CAMERA = "id_camera"
 
 
 
@@ -195,6 +196,7 @@ object Constants {
     const val FUNCTION_CAMERA_FILE_DEFAULT = "default".plus(FUNCTION_CAMERA_FILE_SUBFIX)
     const val FUNCTION_CAMERA_TYPE_BACK = "back"
     const val FUNCTION_CAMERA_TYPE_FRONT = "front"
+    const val FUNCTION_CAMERA_TYPE_IR = "IR"
     const val FUNCTION_MIC_TYPE_BOTTOM = "Bottom"
     const val FUNCTION_MIC_TYPE_BACK = "Back"
     const val FUNCTION_MIC_TYPE_TOP = "Top"

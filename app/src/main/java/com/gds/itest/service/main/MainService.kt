@@ -1,15 +1,22 @@
 package com.gds.itest.service.main
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.Service
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CameraMetadata
+import android.os.Build
 import android.os.IBinder
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.*
 import com.gds.itest.App
 import com.gds.itest.App.Companion.context
+import com.gds.itest.R
 import com.gds.itest.interactor.Event
 import com.gds.itest.interactor.FuncResultCallback
 import com.gds.itest.model.Request
@@ -38,6 +45,7 @@ class MainService : Service(), FuncResultCallback {
     private var soundTracking: SoundTracking? = null
     private var notification: Notification? = null
     private var mServiceV1: Any? = null
+    private var isChecking = false
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -72,7 +80,7 @@ class MainService : Service(), FuncResultCallback {
 
     private fun selectServiceConnected(service: IBinder) {
         when (_curFunction.value?.peekContent()?.key) {
-            Constants.TAG_KEYVIDEORECORD , Constants.TAG_KEYVIDEORECORDFRONT -> {
+            Constants.TAG_KEYVIDEORECORD, Constants.TAG_KEYVIDEORECORDFRONT -> {
                 val binder = service as VideoRecordServiceV1.LocalBinder
                 mServiceV1 = binder.getService()
                 (mServiceV1 as VideoRecordServiceV1).setFuncResultCallback(this@MainService)
@@ -89,7 +97,6 @@ class MainService : Service(), FuncResultCallback {
         }
     }
 
-    private var isChecking = false
     private fun createReadingRequest() {
         Timber.tag(TAG).e("createReadingRequest!")
         if (!isChecking) {
@@ -128,6 +135,7 @@ class MainService : Service(), FuncResultCallback {
             .observeOn(AndroidSchedulers.mainThread())
 
 
+    @SuppressLint("NewApi")
     private fun beginCheckFunction(request: Request?) {
         Timber.tag(TAG).e("beginCheckFunction request: [${request}]")
         isChecking = false
@@ -135,27 +143,56 @@ class MainService : Service(), FuncResultCallback {
             createReadingRequest()
             return
         } else {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
-                notification = request.getImageResult()?.let {
-                    Notification.Builder(this)
-                        .setContentTitle(request.name)
-                        .setContentText("")
-                        .setSmallIcon(it)
-                        .build()
-                }
-                startForeground(12345, notification)
-            }
+            startNotificationForeground(request)
             _curFunction.value = Event(request)
             when (request.key) {
-                Constants.TAG_KEYVIDEORECORD -> checkCheckVideoRecord(request = request)
-                Constants.TAG_KEYVIDEORECORDFRONT -> checkCheckVideoRecord(request = request)
+                Constants.TAG_KEYVIDEORECORD -> {
+                    when(checkCamerasExist(CameraMetadata.LENS_FACING_BACK)) {
+                            true -> checkCheckVideoRecord(request = request)
+                            false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
+                    }
+                }
+                Constants.TAG_KEYVIDEORECORDFRONT -> {
+                    when(checkCamerasExist(CameraMetadata.LENS_FACING_FRONT)) {
+                            true -> checkCheckVideoRecord(request = request)
+                            false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
+                        }
+                }
+                Constants.TAG_KEYCAMERA -> {
+                    when (request.getCameraType()) {
+                        Constants.FUNCTION_CAMERA_TYPE_BACK -> {
+                            when(checkCamerasExist(CameraMetadata.LENS_FACING_BACK)) {
+                                true -> checkCameras(request = request)
+                                false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
+                            }
+                        }
+                        Constants.FUNCTION_CAMERA_TYPE_FRONT ->{
+                            when(checkCamerasExist(CameraMetadata.LENS_FACING_FRONT)) {
+                                true -> checkCameras(request = request)
+                                false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
+                            }
+                        }
+                    }
+                }
                 Constants.TAG_KEYMICROPHONE -> checkMicrophones(request = request)
-                Constants.TAG_KEYCAMERA -> checkCameras(request = request)
                 else -> {
                     Timber.tag(TAG).e("Function not support!!! ${request.key}")
                     createReadingRequest()
                 }
             }
+        }
+    }
+
+    private fun startNotificationForeground(request: Request) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            notification = request.getImageResult()?.let {
+                Notification.Builder(this)
+                    .setContentTitle(request.name)
+                    .setContentText("")
+                    .setSmallIcon(it)
+                    .build()
+            }
+            startForeground(12345, notification)
         }
     }
 
@@ -167,16 +204,19 @@ class MainService : Service(), FuncResultCallback {
                     volume = it.getVolume(),
                     fileName = Constants.FILE_RESULT_PATH.plus(it.key).plus(
                         if (it.key.equals(Constants.TAG_KEYMICROPHONE, true))
-                            ".3gp" else ".m4a"),
-                    timeout = it.getTimeOut()*1000,
+                            ".3gp" else ".m4a"
+                    ),
+                    timeout = it.getTimeOut() * 1000,
                     isCheckMicro = true,
-                    mic = it.getMic())
+                    mic = it.getMic()
+                )
             }.subscribe({ result ->
                 makeResult(result.first ?: false, result.second)
             }, {
                 Timber.e("Err ${it.message}")
-                makeResult( false, it.message)
-            }))
+                makeResult(false, it.message)
+            })
+        )
     }
 
     private fun checkCameras(request: Request) {
@@ -187,11 +227,15 @@ class MainService : Service(), FuncResultCallback {
             }
             mIntent.putExtra(Constants.REQUEST_PACKAGE, Gson().toJson(request))
             startTestFunctionService(mIntent = mIntent)
-            request.getTimeToRecord().toLong().let { stopTestFunctionService(mIntent = mIntent, delay = it) }
+            request.getTimeToRecord().toLong().let { stopTestFunctionService(
+                mIntent = mIntent,
+                delay = it
+            ) }
         } catch (mEx: Exception) {
             Timber.tag(TAG).e("Exception: $mEx")
         }
     }
+
 
     private fun checkCheckVideoRecord(request: Request?) {
         Timber.tag(TAG).e("Start checkCheckVideoRecord")
@@ -201,7 +245,10 @@ class MainService : Service(), FuncResultCallback {
             }
             mIntent.putExtra(Constants.REQUEST_PACKAGE, Gson().toJson(request))
             startTestFunctionService(mIntent = mIntent)
-            request?.getTimeToRecord()?.toLong()?.let { stopTestFunctionService(mIntent = mIntent, delay = it) }
+            request?.getTimeToRecord()?.toLong()?.let { stopTestFunctionService(
+                mIntent = mIntent,
+                delay = it
+            ) }
         } catch (mEx: Exception) {
             Timber.tag(TAG).e("Exception: $mEx")
         }
@@ -209,7 +256,7 @@ class MainService : Service(), FuncResultCallback {
 
     private fun startTestFunctionService(mIntent: Intent) {
         Timber.tag(TAG).e("startTestFunctionService")
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(mIntent)
         }
     }
@@ -236,7 +283,22 @@ class MainService : Service(), FuncResultCallback {
         makeResult(result.first ?: false, result.second)
     }
 
-
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun checkCamerasExist(idCamera: Int) : Boolean {
+        Timber.tag(TAG).e("checkCamerasExist => ")
+        var backCameraId: String? = null
+        val manager = getSystemService(CAMERA_SERVICE) as CameraManager
+        for (cameraId in manager.cameraIdList) {
+            val cameraCharacteristics = manager.getCameraCharacteristics(cameraId)
+            val facing = cameraCharacteristics.get(CameraCharacteristics.LENS_FACING)
+            if (facing == idCamera) {
+                backCameraId = cameraId
+                break
+            }
+        }
+        Timber.tag(TAG).e("checkCamerasExist => ${(backCameraId!=null)}")
+        return (backCameraId!=null)
+    }
 
     private fun makeResult(isPass: Boolean, note: Any? = null) {
         _curFunction.value?.peekContent()?.apply {
@@ -244,7 +306,7 @@ class MainService : Service(), FuncResultCallback {
             setNote(note)
         }?.let {
             Timber.tag("MainService").e("writeResultFile $it")
-            App.createLog(it.toString(),2)
+            App.createLog(it.toString(), 2)
             FileUtils.writeResultFile(it)
         }
         stopForeground(true)
