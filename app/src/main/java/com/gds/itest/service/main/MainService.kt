@@ -37,7 +37,7 @@ class MainService : Service(), FuncResultCallback {
     private val _curFunction = MutableLiveData<Event<Request>>()
     private var soundTracking: SoundTracking? = null
     private var notification: Notification? = null
-
+    private var mServiceV1: Any? = null
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -62,28 +62,30 @@ class MainService : Service(), FuncResultCallback {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             Timber.tag(TAG).e("onServiceConnected!")
-            var mServiceV1: Any? = null
-            when (_curFunction.value?.peekContent()?.key) {
-                Constants.TAG_KEYVIDEORECORD , Constants.TAG_KEYVIDEORECORDFRONT -> {
-                    val binder = service as VideoRecordServiceV1.LocalBinder
-                    mServiceV1 = binder.getService()
-                    mServiceV1.setFuncResultCallback(this@MainService)
-                }
-                Constants.TAG_KEYCAMERA -> {
-                    val binder = service as CameraService.LocalBinder
-                    mServiceV1 = binder.getService()
-                    mServiceV1.setFuncResultCallback(this@MainService)
-                }
-                else -> {
-                    Timber.tag(TAG).e("Function not support!!! ${_curFunction.value?.peekContent()?.key}")
-                    createReadingRequest()
-                }
-            }
+            selectServiceConnected(service)
             mBound = true
         }
-
         override fun onServiceDisconnected(arg0: ComponentName) {
             mBound = false
+        }
+    }
+
+    private fun selectServiceConnected(service: IBinder) {
+        when (_curFunction.value?.peekContent()?.key) {
+            Constants.TAG_KEYVIDEORECORD , Constants.TAG_KEYVIDEORECORDFRONT -> {
+                val binder = service as VideoRecordServiceV1.LocalBinder
+                mServiceV1 = binder.getService()
+                (mServiceV1 as VideoRecordServiceV1).setFuncResultCallback(this@MainService)
+            }
+            Constants.TAG_KEYCAMERA -> {
+                val binder = service as CameraService.LocalBinder
+                mServiceV1 = binder.getService()
+                (mServiceV1 as CameraService).setFuncResultCallback(this@MainService)
+            }
+            else -> {
+                Timber.tag(TAG).e("Function not support!!! ${_curFunction.value?.peekContent()?.key}")
+                createReadingRequest()
+            }
         }
     }
 
@@ -156,8 +158,6 @@ class MainService : Service(), FuncResultCallback {
             }
         }
     }
-
-
 
     private fun checkMicrophones(request: Request) {
         Timber.tag(TAG).e("Start checkMicrophones")
