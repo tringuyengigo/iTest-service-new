@@ -81,11 +81,11 @@
             android:enabled="true"
             android:exported="true" />
         <service
-            android:name=".service.function.camera.CameraService"
+            android:name=".service.function.camera.hardwareV2.CameraServiceV2"
             android:enabled="true"
             android:exported="true"></service>
         <service
-            android:name=".service.function.video.VideoRecordServiceV1"
+            android:name=".service.function.camera.hardwareV1.CameraServiceV1"
             android:enabled="true"
             android:exported="true"></service>
 

@@ -20,9 +20,9 @@ import com.gds.itest.R
 import com.gds.itest.interactor.Event
 import com.gds.itest.interactor.FuncResultCallback
 import com.gds.itest.model.Request
-import com.gds.itest.service.function.camera.CameraService
+import com.gds.itest.service.function.camera.hardwareV2.CameraServiceV2
 import com.gds.itest.service.function.sound.SoundTracking
-import com.gds.itest.service.function.video.VideoRecordServiceV1
+import com.gds.itest.service.function.camera.hardwareV1.CameraServiceV1
 import com.gds.itest.utils.Constants
 import com.gds.itest.utils.FileUtils
 import com.gds.itest.utils.JsonConverter
@@ -46,6 +46,7 @@ class MainService : Service(), FuncResultCallback {
     private var notification: Notification? = null
     private var mServiceV1: Any? = null
     private var isChecking = false
+    private var makeResult = false
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -81,14 +82,14 @@ class MainService : Service(), FuncResultCallback {
     private fun selectServiceConnected(service: IBinder) {
         when (_curFunction.value?.peekContent()?.key) {
             Constants.TAG_KEYVIDEORECORD, Constants.TAG_KEYVIDEORECORDFRONT -> {
-                val binder = service as VideoRecordServiceV1.LocalBinder
+                val binder = service as CameraServiceV1.LocalBinder
                 mServiceV1 = binder.getService()
-                (mServiceV1 as VideoRecordServiceV1).setFuncResultCallback(this@MainService)
+                (mServiceV1 as CameraServiceV1).setFuncResultCallback(this@MainService)
             }
-            Constants.TAG_KEYCAMERA -> {
-                val binder = service as CameraService.LocalBinder
+            Constants.TAG_KEYCAMERA, Constants.TAG_KEY_FRONT_IR_CAMERA -> {
+                val binder = service as CameraServiceV2.LocalBinder
                 mServiceV1 = binder.getService()
-                (mServiceV1 as CameraService).setFuncResultCallback(this@MainService)
+                (mServiceV1 as CameraServiceV2).setFuncResultCallback(this@MainService)
             }
             else -> {
                 Timber.tag(TAG).e("Function not support!!! ${_curFunction.value?.peekContent()?.key}")
@@ -102,17 +103,17 @@ class MainService : Service(), FuncResultCallback {
         if (!isChecking) {
             isChecking = true
             disposable.addAll(createThreadCatchFile(Constants.FILE_REQUEST_PATH)
-                .map {
-                    Timber.tag(TAG).e("createReadingRequest json:  $it")
-                    JsonConverter.convertRequest(it)
-                }
-                .doOnError {
-                    Timber.tag(TAG).e("createReadingRequest doOnError: $it")
-                }
-                .subscribe({ beginCheckFunction(it) }, {
-                    Timber.tag(TAG).e("Skip data cause [${it.message}]")
-                    beginCheckFunction(null)
-                })
+                    .map {
+                        Timber.tag(TAG).e("createReadingRequest json:  $it")
+                        JsonConverter.convertRequest(it)
+                    }
+                    .doOnError {
+                        Timber.tag(TAG).e("createReadingRequest doOnError: $it")
+                    }
+                    .subscribe({ beginCheckFunction(it) }, {
+                        Timber.tag(TAG).e("Skip data cause [${it.message}]")
+                        beginCheckFunction(null)
+                    })
             )
         }
     }
@@ -139,6 +140,7 @@ class MainService : Service(), FuncResultCallback {
     private fun beginCheckFunction(request: Request?) {
         Timber.tag(TAG).e("beginCheckFunction request: [${request}]")
         isChecking = false
+        makeResult = false
         if (request == null) {
             createReadingRequest()
             return
@@ -147,30 +149,40 @@ class MainService : Service(), FuncResultCallback {
             _curFunction.value = Event(request)
             when (request.key) {
                 Constants.TAG_KEYVIDEORECORD -> {
-                    when(checkCamerasExist(CameraMetadata.LENS_FACING_BACK)) {
-                            true -> checkCheckVideoRecord(request = request)
-                            false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
+                    when (checkCamerasExist(CameraMetadata.LENS_FACING_BACK)) {
+                        true -> checkCheckVideoRecord(request = request)
+                        false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
                     }
                 }
                 Constants.TAG_KEYVIDEORECORDFRONT -> {
-                    when(checkCamerasExist(CameraMetadata.LENS_FACING_FRONT)) {
-                            true -> checkCheckVideoRecord(request = request)
-                            false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
-                        }
+                    when (checkCamerasExist(CameraMetadata.LENS_FACING_FRONT)) {
+                        true -> checkCheckVideoRecord(request = request)
+                        false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_front_camera_id)))
+                    }
+                }
+                Constants.TAG_KEY_FRONT_IR_CAMERA -> {
+                    when (checkCamerasExist(CameraMetadata.LENS_FACING_FRONT)) {
+                        true -> checkCameras(request = request)
+                        false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_front_camera_id)))
+                    }
                 }
                 Constants.TAG_KEYCAMERA -> {
-                    when (request.getCameraType()) {
+                    when (request.getCameraType().toLowerCase(Locale.ROOT)) {
                         Constants.FUNCTION_CAMERA_TYPE_BACK -> {
-                            when(checkCamerasExist(CameraMetadata.LENS_FACING_BACK)) {
+                            when (checkCamerasExist(CameraMetadata.LENS_FACING_BACK)) {
                                 true -> checkCameras(request = request)
                                 false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
                             }
                         }
-                        Constants.FUNCTION_CAMERA_TYPE_FRONT ->{
-                            when(checkCamerasExist(CameraMetadata.LENS_FACING_FRONT)) {
+                        Constants.FUNCTION_CAMERA_TYPE_FRONT -> {
+                            when (checkCamerasExist(CameraMetadata.LENS_FACING_FRONT)) {
                                 true -> checkCameras(request = request)
                                 false -> onResultEmit(Pair(first = false, second = getString(R.string.error_cannot_get_back_camera_id)))
                             }
+                        }
+                        else -> {
+                            Timber.tag(TAG).e("Camera Type Non-support!!!")
+                            createReadingRequest()
                         }
                     }
                 }
@@ -199,37 +211,37 @@ class MainService : Service(), FuncResultCallback {
     private fun checkMicrophones(request: Request) {
         Timber.tag(TAG).e("Start checkMicrophones")
         disposable.addAll(Single.just(_curFunction.value?.peekContent())
-            .flatMap {
-                soundTracking?.checkMicrophone(
-                    volume = it.getVolume(),
-                    fileName = Constants.FILE_RESULT_PATH.plus(it.key).plus(
-                        if (it.key.equals(Constants.TAG_KEYMICROPHONE, true))
-                            ".3gp" else ".m4a"
-                    ),
-                    timeout = it.getTimeOut() * 1000,
-                    isCheckMicro = true,
-                    mic = it.getMic()
-                )
-            }.subscribe({ result ->
-                makeResult(result.first ?: false, result.second)
-            }, {
-                Timber.e("Err ${it.message}")
-                makeResult(false, it.message)
-            })
+                .flatMap {
+                    soundTracking?.checkMicrophone(
+                            volume = it.getVolume(),
+                            fileName = Constants.FILE_RESULT_PATH.plus(it.key).plus(
+                                    if (it.key.equals(Constants.TAG_KEYMICROPHONE, true))
+                                        ".3gp" else ".m4a"
+                            ),
+                            timeout = it.getTimeOut() * 1000,
+                            isCheckMicro = true,
+                            mic = it.getMic()
+                    )
+                }.subscribe({ result ->
+                    makeResult(result.first ?: false, result.second)
+                }, {
+                    Timber.e("Err ${it.message}")
+                    makeResult(false, it.message)
+                })
         )
     }
 
     private fun checkCameras(request: Request) {
         Timber.tag(TAG).e("Start checkCameras")
         try {
-            val mIntent = Intent(this, CameraService::class.java).also { intent ->
+            val mIntent = Intent(this, CameraServiceV2::class.java).also { intent ->
                 bindService(intent, connection, Context.BIND_AUTO_CREATE)
             }
             mIntent.putExtra(Constants.REQUEST_PACKAGE, Gson().toJson(request))
             startTestFunctionService(mIntent = mIntent)
             request.getTimeToRecord().toLong().let { stopTestFunctionService(
-                mIntent = mIntent,
-                delay = it
+                    mIntent = mIntent,
+                    delay = it
             ) }
         } catch (mEx: Exception) {
             Timber.tag(TAG).e("Exception: $mEx")
@@ -240,14 +252,14 @@ class MainService : Service(), FuncResultCallback {
     private fun checkCheckVideoRecord(request: Request?) {
         Timber.tag(TAG).e("Start checkCheckVideoRecord")
         try {
-            val mIntent = Intent(this, VideoRecordServiceV1::class.java).also { intent ->
+            val mIntent = Intent(this, CameraServiceV1::class.java).also { intent ->
                 bindService(intent, connection, Context.BIND_AUTO_CREATE)
             }
             mIntent.putExtra(Constants.REQUEST_PACKAGE, Gson().toJson(request))
             startTestFunctionService(mIntent = mIntent)
             request?.getTimeToRecord()?.toLong()?.let { stopTestFunctionService(
-                mIntent = mIntent,
-                delay = it
+                    mIntent = mIntent,
+                    delay = it
             ) }
         } catch (mEx: Exception) {
             Timber.tag(TAG).e("Exception: $mEx")
@@ -262,24 +274,38 @@ class MainService : Service(), FuncResultCallback {
     }
 
     private fun stopTestFunctionService(mIntent: Intent, delay: Long) {
-        Timber.tag(TAG).e("stopTestFunctionService")
         try {
-            Timer().schedule(object : TimerTask() {
-                override fun run() {
-                    Timber.tag(TAG).e("Stop service")
-                    context.stopService(mIntent)
-                    unbindService(connection)
-                    mBound = false
-                }
-            }, delay * 1000)
+            Timber.tag(TAG).e("stopTestFunctionService !!!")
+            disposable.addAll(Single.just(delay)
+                .subscribeOn(Schedulers.newThread())
+                .map { timeout ->
+                    var mTimeout = timeout.toInt()
+                    do {
+                        mTimeout -= 1
+                        Thread.sleep(1000)
+                    } while (mTimeout > 0 && !makeResult)
+                    Timber.tag(TAG).e("stopTestFunctionService forceStopService [BREAK] reason -> timeout: $mTimeout | makeResult: $makeResult")
+                    forceStopService(mIntent)
+                }.subscribe({ result ->
+                    Timber.tag(TAG).e("stopTestFunctionService result $result")
+                }, {
+                    Timber.tag(TAG).e("stopTestFunctionService Error: $it")
+                })
+            )
         } catch (mEx: Exception) {
             Timber.tag(TAG).e("stopTestFunctionService Exception: $mEx")
         }
+    }
 
+    private fun forceStopService(mIntent: Intent) {
+        context.stopService(mIntent)
+        unbindService(connection)
+        mBound = false
     }
 
     override fun onResultEmit(result: Pair<Boolean, Any?>) {
-        Timber.tag("MainService").e("onResultEmit result: $result")
+        makeResult = true
+        Timber.tag("MainService").e("onResultEmit result: $result makeResult: $makeResult")
         makeResult(result.first ?: false, result.second)
     }
 
@@ -296,7 +322,7 @@ class MainService : Service(), FuncResultCallback {
                 break
             }
         }
-        Timber.tag(TAG).e("checkCamerasExist => ${(backCameraId!=null)}")
+        Timber.tag(TAG).e("checkCamerasExist => ${(backCameraId != null)}")
         return (backCameraId!=null)
     }
 
@@ -312,9 +338,6 @@ class MainService : Service(), FuncResultCallback {
         stopForeground(true)
         createReadingRequest()
     }
-
-
-
 
 }
 

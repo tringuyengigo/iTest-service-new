@@ -95,6 +95,7 @@ object Constants {
     const val TAG_KEYHRM = "F98_HRM_SENSOR"
     const val TAG_KEYQUICKCHARGE = "F101_QUICK_CHARGE"
     const val TAG_KEYVIBRATION_MIC = "F103_VIBRATION_MIC"
+    const val TAG_KEY_FRONT_IR_CAMERA = "F512_FRONT_IR_CAMERA"
 
 
     /**

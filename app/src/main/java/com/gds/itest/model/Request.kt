@@ -119,6 +119,7 @@ data class Request(
             Constants.TAG_KEYBARCODE -> R.drawable.f_camera
             Constants.TAG_KEYVIDEORECORD -> R.drawable.f_back_video
             Constants.TAG_KEYVIDEORECORDFRONT -> R.drawable.f_front_video
+            Constants.TAG_KEY_FRONT_IR_CAMERA -> R.drawable.f_front_video
             Constants.TAG_KEYFLASH -> R.drawable.f_flash
             Constants.TAG_KEYSPEAKER -> R.drawable.f_loudspeaker
             Constants.TAG_KEYEARPHONE -> R.drawable.f_earphone

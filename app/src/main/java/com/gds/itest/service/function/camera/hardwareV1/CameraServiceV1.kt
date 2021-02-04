@@ -1,4 +1,4 @@
-package com.gds.itest.service.function.video
+package com.gds.itest.service.function.camera.hardwareV1
 
 import android.app.Notification
 import android.app.Service
@@ -24,8 +24,8 @@ import timber.log.Timber
 import java.util.*
 
 
-class VideoRecordServiceV1 : Service(), SurfaceHolder.Callback {
-    private val TAG = VideoRecordServiceV1::class.qualifiedName
+class CameraServiceV1 : Service(), SurfaceHolder.Callback {
+    private val TAG = CameraServiceV1::class.qualifiedName
     private var mFuncResultCallback: FuncResultCallback? = null
     private var windowManager: WindowManager? = null
     private var surfaceView: SurfaceView? = null
@@ -40,7 +40,7 @@ class VideoRecordServiceV1 : Service(), SurfaceHolder.Callback {
      * runs in the same process as its clients, we don't need to deal with IPC.
      */
     inner class LocalBinder : Binder() {
-        fun getService(): VideoRecordServiceV1 = this@VideoRecordServiceV1
+        fun getService(): CameraServiceV1 = this@CameraServiceV1
     }
 
     fun setFuncResultCallback(mFuncResultCallback: FuncResultCallback) {
